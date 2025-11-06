@@ -23,6 +23,7 @@
 #include <linux/mmzone.h>
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
+#include <linux/string.h>
 
 #include "lunix.h"
 #include "lunix-chrdev.h"
@@ -115,17 +116,32 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	sensor_number = minor / 8;		
 
 	/* minor % 8 -> sensor type */
-	/* (0 -> batt, 1 -> temp, 2 -> light) */
 	sensor_type = minor % 8;	
 
 	/* Allocate a new Lunix character device private state structure */
-	s = {
-		.type = sensor_type;
-		.sensor = &lunix_sensors[sensor_number];
-		.buf_lim = LUNIX_CHRDEV_BUFSZ;
+	s = kmalloc(sizeof(struct lunix_chrdev_state_struct *), GFP_KERNEL);
+	if (!s) {
+		ret = -ENOMEM;
+		debug("Failed to allocate %d bytes for private state structure. ret = %d\n",
+				sizeof(struct lunix_chrdev_state_struct *), 
+				ret);
+		goto out;
+	}
 		
-	};
-	
+	s->type = sensor_type;							/* (0 -> batt, 1 -> temp, 2 -> light) */
+	s->sensor = &lunix_sensors[sensor_number];
+	s->buf_lim = LUNIX_CHRDEV_BUFSZ;
+	s->buf_timestamp = ktime_get_real_seconds();
+	s->io_mode = NONBLOCKING;						/* initially non-blocking (?) */
+
+	/* zero-out buffer */
+	memset(s->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
+
+	/* init semaphore */
+	sema_init(s->lock);
+
+	/* store state struct in file's private data */
+	filp->private_data = (void *)s;
 
 out:
 	debug("leaving, with ret = %d\n", ret);
@@ -134,7 +150,8 @@ out:
 
 static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 {
-	/* ? */
+	/* deallocate private data allocated by open() */
+	kfree(filp->private_data);
 	return 0;
 }
 
