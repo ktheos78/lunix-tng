@@ -99,7 +99,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/* Declarations */
 	int ret;
 	unsigned int minor, sensor_type, sensor_number;
-	struct lunix_chrdev_state_struct *s;	/* device information */
+	struct lunix_chrdev_state_struct *s;	/* device state information */
 
 	debug("entering\n");
 	ret = -ENODEV;
@@ -122,7 +122,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	s = kmalloc(sizeof(struct lunix_chrdev_state_struct *), GFP_KERNEL);
 	if (!s) {
 		ret = -ENOMEM;
-		debug("Failed to allocate %d bytes for private state structure. ret = %d\n",
+		pr_err("Failed to allocate %d bytes for private state structure. ret = %d\n",
 				sizeof(struct lunix_chrdev_state_struct *), 
 				ret);
 		goto out;
@@ -133,12 +133,13 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	s->buf_lim = LUNIX_CHRDEV_BUFSZ;
 	s->buf_timestamp = ktime_get_real_seconds();
 	s->io_mode = NONBLOCKING;						/* initially non-blocking (?) */
+	/* FIXME: return to intitial io mode flag */
 
 	/* zero-out buffer */
 	memset(s->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
 
 	/* init semaphore */
-	sema_init(s->lock);
+	sema_init(s->lock, 0);
 
 	/* store state struct in file's private data */
 	filp->private_data = (void *)s;
@@ -150,7 +151,7 @@ out:
 
 static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 {
-	/* deallocate private data allocated by open() */
+	/* deallocate character device state struct allocated by open() */
 	kfree(filp->private_data);
 	return 0;
 }
