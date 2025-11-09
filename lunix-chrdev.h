@@ -46,7 +46,7 @@ struct lunix_chrdev_state_struct {
 	struct semaphore lock;
 
 	/*
-	 * Mode settings: blocking/non-blocking
+	 * Mode settings: blocking/non-blocking, TODO: raw/cooked mode
 	 */
 	enum lunix_chrdev_state_mode io_mode;
 };

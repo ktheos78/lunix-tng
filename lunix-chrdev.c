@@ -24,6 +24,7 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
+#include <linux/uaccess.h>
 
 #include "lunix.h"
 #include "lunix-chrdev.h"
@@ -38,21 +39,17 @@ struct cdev lunix_chrdev_cdev;
  * Just a quick [unlocked] check to see if the cached
  * chrdev state needs to be updated from sensor measurements.
  */
-/*
- * Declare a prototype so we can define the "unused" attribute and keep
- * the compiler happy. This function is not yet used, because this helpcode
- * is a stub.
- */
-static int __attribute__((unused)) lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *);
 static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct *sensor;
-	
-	WARN_ON ( !(sensor = state->sensor));
-	/* ? */
 
-	/* The following return is bogus, just for the stub to compile */
-	return 0; /* ? */
+	WARN_ON (!(sensor = state->sensor));
+	
+	/* check if sensor's last update is newer than state buffer's timestamp*/
+	if (sensor->msr_data[state->type]->last_update > state->buf_timestamp)
+		return 1;
+
+	return 0;
 }
 
 /*
@@ -62,6 +59,7 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
  */
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
+	/* declarations */
 	struct lunix_sensor_struct __attribute__((unused)) *sensor;
 	
 	debug("leaving\n");
@@ -122,7 +120,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	s = kmalloc(sizeof(struct lunix_chrdev_state_struct *), GFP_KERNEL);
 	if (!s) {
 		ret = -ENOMEM;
-		pr_err("Failed to allocate %d bytes for private state structure. ret = %d\n",
+		pr_err("Failed to allocate %ld bytes for private state structure. ret = %d\n",
 				sizeof(struct lunix_chrdev_state_struct *), 
 				ret);
 		goto out;
@@ -139,7 +137,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	memset(s->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
 
 	/* init semaphore */
-	sema_init(s->lock, 0);
+	sema_init(&s->lock, 1);
 
 	/* store state struct in file's private data */
 	filp->private_data = (void *)s;
