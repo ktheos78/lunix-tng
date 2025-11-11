@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
+#include <linux/sprintf.h>
 
 #include "lunix.h"
 #include "lunix-chrdev.h"
@@ -65,14 +66,17 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	/* declarations */
 	struct lunix_sensor_struct *sensor;
-	uint32_t last_update;
+	uint8_t sign;	/* 1: - | 0: +*/
 	uint16_t data;
+	uint32_t last_update;
+	long data_unformatted, whole, frac;
 	int ret;
 	
 	debug("entering\n");
 
 	WARN_ON (!(sensor = state->sensor));
 	ret = 0;
+	sign = 0;
 
 	/*
 	 * Grab the raw data quickly, hold the
@@ -97,22 +101,38 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	 */
 
 	/* update buffer and buffer size using look-up table */
-	// TODO: format data using LUT, copy to buffer, set buf_lim
 	switch (state->type) {
 
 		case BATT:
+			data_unformatted = lookup_voltage[data];
 			break;
 
 		case TEMP:
+			data_unformatted = lookup_temperature[data];
 			break;
 
 		case LIGHT:
+			data_unformatted = lookup_light[data];
 			break;
 
 		default:
 			ret = -EFAULT;
 			goto out;
 	}
+
+	if (data_unformatted < 0) {
+		sign = 1;
+		data_unformatted = -data_unformatted;
+	}
+
+	/* 3 decimals */
+	whole = data_unformatted / 1000;
+	frac = data_unformatted % 1000;
+	snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, 
+			"%s%ld.%03ld", sign ? "-" : "", whole, frac);
+
+	/* update buffer limit */
+	state->buf_lim = strlen(state->buf_data);
 
 	/* update buffer timestamp */
 	state->buf_timestamp = last_update;
