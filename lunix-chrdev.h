@@ -26,9 +26,16 @@
 
 #include "lunix.h"
 
-enum lunix_chrdev_state_mode {
-	NONBLOCKING = 0,
-	BLOCKING = 1
+/* enum for blocking_state */
+enum lunix_blocking_mode_enum {
+	MODE_NONBLOCKING = 0,
+	MODE_BLOCKING = 1
+};
+
+/* enum for rewind on EOF */
+enum lunix_rewind_mode_enum {
+	MODE_NO_REWIND = 0,
+	MODE_REWIND = 1
 };
 
 /*
@@ -46,9 +53,12 @@ struct lunix_chrdev_state_struct {
 	struct semaphore lock;
 
 	/*
-	 * Mode settings: blocking/non-blocking, TODO: raw/cooked mode
+	 * Mode settings: blocking(1)/non-blocking(0)
+	 				  rewind on EOF(1)/no rewind(0)
+	 * 		TODO: ioctl for raw/cooked mode, EOF mode
 	 */
-	enum lunix_chrdev_state_mode io_mode;
+	enum lunix_blocking_mode_enum blocking_mode;
+	enum lunix_rewind_mode_enum rewind_mode;
 };
 
 /*

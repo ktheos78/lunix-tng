@@ -1,0 +1,11 @@
+*.cmd
+*.o
+*.ko
+*.mod
+lunix-attach
+mk-lunix-lookup
+lunix.mod.c
+lunix-lookup.h
+Module.symvers
+modules.order
+
