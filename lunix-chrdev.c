@@ -46,7 +46,10 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	debug("entering\n");
 
 	struct lunix_sensor_struct *sensor;
-	WARN_ON (!(sensor = state->sensor));
+	if (!(sensor = state->sensor)) {
+		pr_err("Sensor is null\n");
+		return 0;
+	}
 
 	/* check if sensor's last update is newer than state buffer's timestamp*/
 	if (sensor->msr_data[state->type]->last_update > state->buf_timestamp)
@@ -74,7 +77,13 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	debug("entering\n");
 
-	WARN_ON (!(sensor = state->sensor));
+	sensor = state->sensor;
+	if (!sensor) {
+		pr_err("Sensor is null\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	ret = 0;
 	sign = 0;
 
@@ -173,28 +182,28 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	sensor_type = minor % 8;	
 
 	/* Allocate a new Lunix character device private state structure */
-	s = kmalloc(sizeof(struct lunix_chrdev_state_struct *), GFP_KERNEL);
+	s = kmalloc(sizeof(struct lunix_chrdev_state_struct), GFP_KERNEL);
 	if (!s) {
 		ret = -ENOMEM;
 		pr_err("Failed to allocate %ld bytes for private state structure. ret = %d\n",
-				sizeof(struct lunix_chrdev_state_struct *), 
+				sizeof(struct lunix_chrdev_state_struct), 
 				ret);
 		goto out;
 	}
 		
 	s->type = sensor_type;							/* (0 -> batt, 1 -> temp, 2 -> light) */
 	s->sensor = &lunix_sensors[sensor_number];
-	s->buf_lim = LUNIX_CHRDEV_BUFSZ;
+	s->buf_lim = 0;
 	s->buf_timestamp = ktime_get_real_seconds();
 
 	/* set blocking_mode according to O_NONBLOCK */
-	if (filp->f_flags & O_NONBLOCK)
-		s->blocking_mode = MODE_NONBLOCKING;
-	else
-		s->blocking_mode = MODE_BLOCKING;
+	s->blocking_mode = (filp->f_flags & O_NONBLOCK) ? MODE_NONBLOCKING : MODE_BLOCKING;
 
 	/* auto-rewind on EOF by default */
 	s->rewind_mode = MODE_REWIND;
+
+	/* cooked (formatted) mode by default */
+	s->format_mode = MODE_COOKED;
 
 	/* zero-out buffer */
 	memset(s->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
@@ -231,10 +240,18 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	debug("Entering\n");
 
 	state = filp->private_data;
-	WARN_ON(!state);
+	if (!state) {
+		pr_err("State is null\n");
+		ret = -EINVAL;
+		goto out_no_lock;
+	}
 
 	sensor = state->sensor;
-	WARN_ON(!sensor);
+	if (!sensor) {
+		pr_err("Sensor is null\n");
+		ret = -EINVAL;
+		goto out_no_lock;
+	}
 
 	/* hold state lock for state update call */
 	if (down_interruptible(&state->lock)) {
@@ -279,7 +296,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		/* auto-rewind on EOF */
 		*f_pos = 0;
 
-		/* return 0 if NOREWIND is specified*/
+		/* return 0 if NOREWIND is specified */
 		if (state->rewind_mode == MODE_NOREWIND) {
 			ret = 0;
 			goto out;
