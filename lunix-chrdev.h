@@ -34,7 +34,7 @@ enum lunix_blocking_mode_enum {
 
 /* enum for rewind on EOF */
 enum lunix_rewind_mode_enum {
-	MODE_NO_REWIND = 0,
+	MODE_NOREWIND = 0,
 	MODE_REWIND = 1
 };
 

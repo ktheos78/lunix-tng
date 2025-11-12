@@ -129,7 +129,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	whole = data_unformatted / 1000;
 	frac = data_unformatted % 1000;
 	snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, 
-			"%s%ld.%03ld", sign ? "-" : "", whole, frac);
+			"%s%ld.%03ld ", sign ? "-" : "", whole, frac);
 
 	/* update buffer limit */
 	state->buf_lim = strlen(state->buf_data);
@@ -275,13 +275,16 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 
 	/* End of file */
 	if (*f_pos >= state->buf_lim) {
-		ret = 0;
 
 		/* auto-rewind on EOF */
-		if (state->rewind_mode == MODE_REWIND)
-			*f_pos = 0;
+		*f_pos = 0;
 
-		goto out;
+		/* return 0 if NOREWIND is specified*/
+		if (state->rewind_mode == MODE_NOREWIND) {
+			ret = 0;
+			goto out;
+		}
+
 	}
 	
 	/* Determine the number of cached bytes to copy to userspace */
@@ -294,7 +297,8 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	}
 
 	/* adjust offset, return number of read bytes */
-	*f_pos += cnt;
+	if (*f_pos > 0)
+		*f_pos += cnt;
 	ret = cnt;
 
 out:
