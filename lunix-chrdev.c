@@ -228,7 +228,86 @@ static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 
 static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	struct lunix_chrdev_state_struct *state;
+	int val;
+	long ret = 0;
+
+	state = filp->private_data;
+
+	/* check for invalid commands */
+	if (_IOC_TYPE(cmd) != LUNIX_IOC_MAGIC || _IOC_NR(cmd) > LUNIX_IOC_MAXNR) {
+		ret = -ENOTTY;
+		goto out;
+	}
+
+	/* execute the command */
+	switch (cmd)
+	{
+		case LUNIX_IOC_SET_FORMAT:
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
+			if ((val != MODE_COOKED) && (val != MODE_RAW)) {
+				ret = -EINVAL;
+				goto out;
+			}
+
+			state->format_mode = val;
+			break;
+
+		case LUNIX_IOC_SET_BLOCKING:
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
+			if ((val != MODE_NONBLOCKING) && (val != MODE_BLOCKING)) {
+				ret = -EINVAL;
+				goto out;
+			}
+
+			state->blocking_mode = val;
+			break;
+
+		case LUNIX_IOC_SET_REWIND:
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
+			if ((val != MODE_REWIND) && (val != MODE_NOREWIND)) {
+				ret = -EINVAL;
+				goto out;
+			}
+
+			state->rewind_mode = val;
+			break;
+
+		case LUNIX_IOC_GET_FORMAT:
+			if (copy_to_user((int __user *)arg, &state->format_mode, sizeof(int)))
+				ret = -EFAULT;
+			break;
+		
+		case LUNIX_IOC_GET_BLOCKING:
+			if (copy_to_user((int __user *)arg, &state->blocking_mode, sizeof(int)))
+				ret = -EFAULT;
+			break;
+
+		case LUNIX_IOC_GET_REWIND:
+			if (copy_to_user((int __user *)arg, &state->rewind_mode, sizeof(int)))
+				ret = -EFAULT;
+			break;
+
+		default:
+			ret = -ENOTTY;
+			break;
+	}
+
+out:
+	debug("Leaving with ret = %ld\n", ret);
+	return ret;
 }
 
 static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t cnt, loff_t *f_pos)

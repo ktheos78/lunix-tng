@@ -88,8 +88,16 @@ void lunix_chrdev_destroy(void);
  * Definition of ioctl commands
  */
 #define LUNIX_IOC_MAGIC     LUNIX_CHRDEV_MAJOR
-//#define LUNIX_IOC_EXAMPLE _IOR(LUNIX_IOC_MAGIC, 0, void *)
+#define LUNIX_IOC_MAXNR 5
 
-#define LUNIX_IOC_MAXNR 0
+/* setters */
+#define LUNIX_IOC_SET_FORMAT	_IOW(LUNIX_IOC_MAGIC, 0, int)	/* raw/cooked */
+#define LUNIX_IOC_SET_BLOCKING	_IOW(LUNIX_IOC_MAGIC, 1, int)	/* blocking/non-blocking */
+#define LUNIX_IOC_SET_REWIND	_IOW(LUNIX_IOC_MAGIC, 2, int)	/* rewind/no rewind on EOF */
+
+/* getters */
+#define LUNIX_IOC_GET_FORMAT	_IOR(LUNIX_IOC_MAGIC, 3, int)	/* raw/cooked */
+#define LUNIX_IOC_GET_BLOCKING	_IOR(LUNIX_IOC_MAGIC, 4, int)	/* blocking/non-blocking */
+#define LUNIX_IOC_GET_REWIND	_IOR(LUNIX_IOC_MAGIC, 5, int)	/* rewind/no rewind on EOF */
 
 #endif /* _LUNIX_H */
