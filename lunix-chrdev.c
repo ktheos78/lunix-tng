@@ -228,7 +228,63 @@ static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 
 static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	struct lunix_chrdev_state_struct *state;
+	int err;
+	long ret;
+
+	state = filp->private_data;
+
+	/* check for invalid commands */
+	if (_IOC_TYPE(cmd) != LUNIX_IOC_MAGIC) {
+		ret = -ENOTTY;
+		goto out;
+	}
+
+	if (_IOC_NR(cmd) > LUNIX_IOC_MAXNR) {
+		ret = -ENOTTY;
+		goto out;
+	}
+
+	/* verify addresses */
+	if (_IOC_DIR(cmd) & IOC_READ)
+		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+	else if (_IOC_DIR(cmd) & IOC_WRITE)
+		err = !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+
+	if (err) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	/* finally, we can execute the command */
+	switch (cmd)
+	{
+		case LUNIX_IOC_SET_FORMAT:
+			break;
+
+		case LUNIX_IOC_SET_BLOCKING:
+			break;
+
+		case LUNIX_IOC_SET_REWIND:
+			break;
+
+		case LUNIX_IOC_GET_FORMAT:
+			break;
+		
+		case LUNIX_IOC_GET_BLOCKING:
+			break;
+
+		case LUNIX_IOC_GET_REWIND:
+			break;
+
+		default:
+			ret = -ENOTTY;
+			goto out;
+	}
+
+out:
+	debug("Leaving with ret = %ld\n", ret);
+	return ret;
 }
 
 static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t cnt, loff_t *f_pos)
