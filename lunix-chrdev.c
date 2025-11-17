@@ -233,64 +233,102 @@ static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 	long ret = 0;
 
 	state = filp->private_data;
+	if (!state) {
+		pr_err("State is null\n");
+		ret = -EINVAL;
+		goto out_no_lock;
+	}
 
 	/* check for invalid commands */
-	if (_IOC_TYPE(cmd) != LUNIX_IOC_MAGIC || _IOC_NR(cmd) > LUNIX_IOC_MAXNR)
-		return -ENOTTY;
+	if (_IOC_TYPE(cmd) != LUNIX_IOC_MAGIC || _IOC_NR(cmd) > LUNIX_IOC_MAXNR) {
+		ret = -ENOTTY;
+		goto out_no_lock;
+	}
+
+	/* acquire state lock */
+	if (down_interruptible(&state->lock)) {
+		ret = -ERESTARTSYS;
+		goto out_no_lock;
+	}
 
 	/* execute the command */
 	switch (cmd)
 	{
 		case LUNIX_IOC_SET_FORMAT:
-			if (copy_from_user(&val, (int __user *)arg, sizeof(int)))
-				return -EFAULT;
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
-			if ((val != MODE_COOKED) && (val != MODE_RAW))
-				return -EINVAL;
+			if ((val != MODE_COOKED) && (val != MODE_RAW)) {
+				ret = -EINVAL;
+				goto out;
+			}
 
 			state->format_mode = val;
 			break;
 
 		case LUNIX_IOC_SET_BLOCKING:
-			if (copy_from_user(&val, (int __user *)arg, sizeof(int)))
-				return -EFAULT;
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
-			if ((val != MODE_NONBLOCKING) && (val != MODE_BLOCKING))
-				return -EINVAL;
+			if ((val != MODE_NONBLOCKING) && (val != MODE_BLOCKING)) {
+				ret = -EINVAL;
+				goto out;
+			}
 
 			state->blocking_mode = val;
 			break;
 
 		case LUNIX_IOC_SET_REWIND:
-			if (copy_from_user(&val, (int __user *)arg, sizeof(int)))
-				return -EFAULT;
+			if (copy_from_user(&val, (int __user *)arg, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
-			if ((val != MODE_REWIND) && (val != MODE_NOREWIND))
-				return -EINVAL;
+			if ((val != MODE_REWIND) && (val != MODE_NOREWIND)) {
+				ret = -EINVAL;
+				goto out;
+			}
 
 			state->rewind_mode = val;
 			break;
 
 		case LUNIX_IOC_GET_FORMAT:
-			if (copy_to_user((int __user *)arg, &state->format_mode, sizeof(int)))
-				return -EFAULT;
+			if (copy_to_user((int __user *)arg, &state->format_mode, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
 			break;
 		
 		case LUNIX_IOC_GET_BLOCKING:
-			if (copy_to_user((int __user *)arg, &state->blocking_mode, sizeof(int)))
-				return -EFAULT;
+			if (copy_to_user((int __user *)arg, &state->blocking_mode, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
 			break;
 
 		case LUNIX_IOC_GET_REWIND:
-			if (copy_to_user((int __user *)arg, &state->rewind_mode, sizeof(int)))
-				return -EFAULT;
+			if (copy_to_user((int __user *)arg, &state->rewind_mode, sizeof(int))) {
+				ret = -EFAULT;
+				goto out;
+			}
+
 			break;
 
 		default:
-			return -ENOTTY;
+			ret = -ENOTTY;
+			goto out;
 	}
 
-	debug("Leaving succesfully with ret = %ld\n", ret);
+out:
+	up(&state->lock);
+out_no_lock:
+	debug("Leaving with ret = %ld\n", ret);
 	return ret;
 }
 
