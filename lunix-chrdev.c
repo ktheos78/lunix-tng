@@ -335,6 +335,7 @@ out_no_lock:
 static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t cnt, loff_t *f_pos)
 {
 	ssize_t ret;
+	size_t remaining;
 	struct lunix_sensor_struct *sensor;
 	struct lunix_chrdev_state_struct *state;
 
@@ -391,22 +392,11 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		}
 	}
 
-	/* End of file */
-	if (*f_pos >= state->buf_lim) {
-
-		/* auto-rewind on EOF */
-		*f_pos = 0;
-
-		/* return 0 if NOREWIND is specified */
-		if (state->rewind_mode == MODE_NOREWIND) {
-			ret = 0;
-			goto out;
-		}
-
-	}
+	/* calculate remaining bytes to copy */
+	remaining = (*f_pos < state->buf_lim) ? (state->buf_lim - *f_pos) : 0;
 	
 	/* Determine the number of cached bytes to copy to userspace */
-	cnt = min_t(size_t, cnt, state->buf_lim - *f_pos);	/* typesafe macro */
+	cnt = min_t(size_t, cnt, remaining);	/* typesafe macro */
 
 	/* copy to user buffer */
 	if (copy_to_user(usrbuf, &state->buf_data[*f_pos], cnt)) {
@@ -415,9 +405,21 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	}
 
 	/* adjust offset, return number of read bytes */
-	if (*f_pos > 0)
-		*f_pos += cnt;
+	*f_pos += cnt;
 	ret = cnt;
+
+	/* End of file */
+	if (*f_pos >= state->buf_lim) {
+
+		/* return 0 if NOREWIND is specified */
+		if (state->rewind_mode == MODE_NOREWIND) {
+			ret = 0;
+			goto out;
+		}
+
+		/* rewind */
+		*f_pos = 0;
+	}
 
 out:
 	up(&state->lock);	/* release state lock */
