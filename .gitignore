@@ -4,6 +4,7 @@
 *.mod
 lunix-attach
 mk-lunix-lookup
+lunix-ioctl-test
 lunix.mod.c
 lunix-lookup.h
 Module.symvers

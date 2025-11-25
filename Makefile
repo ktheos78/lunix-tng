@@ -39,7 +39,7 @@ USER_CFLAGS = -Wall -Werror #-m32
 
 PWD       := $(shell pwd)
 
-all: modules lunix-attach
+all: modules lunix-attach lunix-ioctl-test lunix-fork-test
 
 modules: lunix-lookup.h
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) $(KERNEL_VERBOSE) $(KERNEL_MAKE_ARGS) modules
@@ -62,3 +62,9 @@ lunix-lookup.h: mk-lunix-lookup
 
 mk-lunix-lookup: mk-lunix-lookup.c
 	$(CC) $(USER_CFLAGS) -o mk-lunix-lookup mk-lunix-lookup.c -lm
+
+#
+# ioctl tester
+#
+lunix-ioctl-test: lunix-ioctl-test.c
+	$(CC) $(USER_CFLAGS) -o $@ $<

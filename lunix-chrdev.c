@@ -109,6 +109,13 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	 * holding only the private state semaphore
 	 */
 
+	/* send raw data if MODE_RAW is on */
+	if (state->format_mode == MODE_RAW) {
+		snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, 
+				"%d", data);
+		goto out_raw;
+	}
+
 	/* update buffer and buffer size using look-up table */
 	switch (state->type) {
 
@@ -140,6 +147,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, 
 			"%s%ld.%03ld ", sign ? "-" : "", whole, frac);
 
+out_raw:
 	/* update buffer limit */
 	state->buf_lim = strlen(state->buf_data);
 
