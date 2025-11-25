@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# remove existing module, ignore error
+rmmod lunix 2> /dev/null
+
 # compile lunix
 make
 
