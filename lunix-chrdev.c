@@ -36,7 +36,6 @@
  */
 struct cdev lunix_chrdev_cdev;
 
-// TODO (?): look into making it atomic maybe
 /*
  * Just a quick [unlocked] check to see if the cached
  * chrdev state needs to be updated from sensor measurements.

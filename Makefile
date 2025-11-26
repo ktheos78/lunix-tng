@@ -68,3 +68,9 @@ mk-lunix-lookup: mk-lunix-lookup.c
 #
 lunix-ioctl-test: lunix-ioctl-test.c
 	$(CC) $(USER_CFLAGS) -o $@ $<
+
+#
+# fork test
+#
+lunix-fork-test: lunix-fork-test.c
+	$(CC) $(USER_CFLAGS) -o $@ $<

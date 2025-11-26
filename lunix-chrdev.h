@@ -67,7 +67,6 @@ struct lunix_chrdev_state_struct {
 	 * - blocking/non-blocking
 	 * - rewind/no rewind on EOF
 	 * - raw/cooked (unformatted/formatted) data
-	 * 	TODO: ioctl for switching between modes
 	 */
 	enum lunix_blocking_mode_enum blocking_mode;
 	enum lunix_rewind_mode_enum rewind_mode;
